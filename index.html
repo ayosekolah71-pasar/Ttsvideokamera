@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Video Editor Pro - Dual Audio Mode</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: system-ui, 'Segoe UI', sans-serif; background: #0a0f1e; color: white; display: flex; justify-content: center; padding: 16px; margin: 0; }
+        .container { background: #1a1f2e; padding: 20px; border-radius: 28px; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #00e5ff; margin: 0; }
+        .sub { text-align: center; font-size: 11px; color: #88aaff; margin-bottom: 20px; }
+        .label { font-weight: 600; margin: 12px 0 5px; font-size: 14px; color: #b9e6ff; }
+        input[type="file"], textarea { width: 100%; border-radius: 16px; padding: 12px; background: #10131f; border: 1px solid #333; color: white; margin-bottom: 10px; }
+        button { width: 100%; padding: 14px; background: #00e5ff; border: none; border-radius: 50px; font-weight: bold; font-size: 16px; color: #000; margin-top: 10px; cursor: pointer; transition: 0.2s; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .status { background: #0e1120; border-radius: 20px; padding: 10px; text-align: center; font-size: 12px; margin: 10px 0; border-left: 3px solid #00e5ff; color: #00e5ff; }
+        .row { display: flex; gap: 8px; margin: 10px 0; }
+        .row button { margin: 0; flex: 1; background: #252c40; color: white; font-size: 13px; padding: 10px; }
+        .row button.active { background: #00e5ff; color: #000; }
+        .camera-box { background: #000; border-radius: 20px; overflow: hidden; margin: 10px 0; }
+        video { width: 100%; border-radius: 15px; background: #000; }
+        .btn-danger { background: #dc2626 !important; color: white !important; }
+        #outputArea { display: none; margin-top: 20px; border-top: 2px solid #333; padding-top: 15px; }
+        .audio-preview { background: #10131f; padding: 10px; border-radius: 15px; margin-top: 5px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎬 Video Editor Pro</h2>
+    <div class="sub">V3: TTS + Mp3 File + Kamera Belakang</div>
+
+    <div class="label">📹 Pilih Video (Kamera/File)</div>
+    <div class="row">
+        <button id="tabFile" class="active">📁 File Manager</button>
+        <button id="tabCamera">📷 Kamera Belakang</button>
+    </div>
+
+    <div id="fileArea">
+        <input type="file" id="videoInput" accept="video/*">
+    </div>
+
+    <div id="cameraArea" style="display:none;">
+        <div class="camera-box"><video id="camPreview" autoplay playsinline muted></video></div>
+        <div id="camTimer" style="text-align:center; font-size:12px; color:#ffaa33;">Min 10 detik</div>
+        <div class="row">
+            <button id="startCamBtn" style="background:#22c55e; color:white;">🔴 Mulai Rekam</button>
+            <button id="stopCamBtn" class="btn-danger" disabled>⏹️ Berhenti</button>
+        </div>
+    </div>
+
+    <div id="previewArea" style="display:none;">
+        <video id="previewVideo" muted playsinline></video>
+        <button id="deleteVideoBtn" class="btn-danger" style="font-size:12px; padding:8px;">🗑️ Hapus Video</button>
+    </div>
+
+    <div class="label">🔊 Sumber Suara (Audio)</div>
+    <div class="row">
+        <button id="tabTTS" class="active">🗣️ Text to Speech</button>
+        <button id="tabMP3">🎵 Upload MP3</button>
+    </div>
+
+    <div id="ttsArea">
+        <textarea id="ttsText" rows="2" placeholder="Ketik kata-kata di sini..."></textarea>
+        <button id="generateTTSBtn">🎤 Generate & Simpan Suara</button>
+    </div>
+
+    <div id="mp3Area" style="display:none;">
+        <input type="file" id="audioInput" accept="audio/mpeg, audio/mp3">
+        <div class="sub">*Pilih file MP3 dari perangkat Anda</div>
+    </div>
+
+    <div id="audioStatus" class="status">Audio belum siap</div>
+    <div id="audioPreviewArea" class="audio-preview">
+        <span style="font-size:11px;">Cek Suara:</span>
+        <audio id="audioPlayer" controls style="width:100%; height:30px;"></audio>
+    </div>
+
+    <div class="label">✏️ Teks di Layar</div>
+    <textarea id="overlayText" placeholder="Teks yang muncul di video..."></textarea>
+    <div class="row">
+        <button id="posTop" class="active">Atas</button>
+        <button id="posMid">Tengah</button>
+        <button id="posBottom">Bawah</button>
+    </div>
+
+    <button id="processBtn" style="background:#ffaa33; margin-top:20px;" disabled>✨ PRODUKSI VIDEO (MP4) ✨</button>
+    <div id="infoStatus" class="status">Lengkapi Video & Audio</div>
+
+    <div id="outputArea">
+        <video id="outputVideo" controls></video>
+        <div class="row">
+            <button id="editBtn" style="background:#f59e0b; color:white;">✏️ Edit Ulang</button>
+            <button onclick="location.reload()" class="btn-danger">🗑️ Reset Semua</button>
+        </div>
+        <a id="downloadLink" class="download-btn" style="display:block; background:#22c55e; text-align:center; padding:15px; border-radius:50px; text-decoration:none; color:white; font-weight:bold; margin-top:10px;">💾 SIMPAN KE GALERI (WA)</a>
+    </div>
+</div>
+
+<canvas id="mainCanvas" style="display:none;"></canvas>
+
+<script>
+    (function() {
+        const videoInput = document.getElementById('videoInput');
+        const audioInput = document.getElementById('audioInput');
+        const previewVideo = document.getElementById('previewVideo');
+        const previewArea = document.getElementById('previewArea');
+        const ttsText = document.getElementById('ttsText');
+        const generateTTSBtn = document.getElementById('generateTTSBtn');
+        const audioStatus = document.getElementById('audioStatus');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioPreviewArea = document.getElementById('audioPreviewArea');
+        const processBtn = document.getElementById('processBtn');
+        const infoStatus = document.getElementById('infoStatus');
+        const outputArea = document.getElementById('outputArea');
+        const outputVideo = document.getElementById('outputVideo');
+        const downloadLink = document.getElementById('downloadLink');
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let selectedVideoBlob = null;
+        let selectedAudioBlob = null;
+        let textPos = 'top', camStream, camRecorder, camSec = 0, camInterval;
+
+        // --- TAB VIDEO ---
+        document.getElementById('tabFile').onclick = () => { switchVideoTab('file'); stopCam(); };
+        document.getElementById('tabCamera').onclick = () => { switchVideoTab('camera'); startCam(); };
+
+        async function startCam() {
+            try {
+                camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+                document.getElementById('camPreview').srcObject = camStream;
+            } catch (e) { alert("Kamera belakang tidak dapat diakses."); }
+        }
+        function stopCam() { if(camStream) camStream.getTracks().forEach(t=>t.stop()); }
+
+        document.getElementById('startCamBtn').onclick = () => {
+            const chunks = []; camSec = 0;
+            camRecorder = new MediaRecorder(camStream);
+            camRecorder.ondataavailable = e => chunks.push(e.data);
+            camRecorder.onstop = () => {
+                selectedVideoBlob = new Blob(chunks, {type:'video/mp4'});
+                loadPreview(URL.createObjectURL(selectedVideoBlob));
+            };
+            camRecorder.start();
+            document.getElementById('startCamBtn').disabled = true;
+            document.getElementById('stopCamBtn').disabled = false;
+            camInterval = setInterval(() => { camSec++; document.getElementById('camTimer').innerText = `Durasi: ${camSec}s`; }, 1000);
+        };
+
+        document.getElementById('stopCamBtn').onclick = () => {
+            if(camSec < 10) { alert("Min 10 detik!"); return; }
+            clearInterval(camInterval); camRecorder.stop();
+            document.getElementById('startCamBtn').disabled = false;
+            document.getElementById('stopCamBtn').disabled = true;
+        };
+
+        // --- TAB AUDIO ---
+        document.getElementById('tabTTS').onclick = () => switchAudioTab('tts');
+        document.getElementById('tabMP3').onclick = () => switchAudioTab('mp3');
+
+        // FIXED TTS GENERATE
+        generateTTSBtn.onclick = async () => {
+            const txt = ttsText.value.trim();
+            if(!txt) return;
+            window.speechSynthesis.cancel();
+            generateTTSBtn.innerText = "⏳ Memproses...";
+            generateTTSBtn.disabled = true;
+
+            try {
+                // Gunakan MediaRecorder untuk menangkap output TTS secara digital
+                const streamDest = new AudioContext().createMediaStreamDestination();
+                const utter = new SpeechSynthesisUtterance(txt);
+                utter.lang = 'id-ID';
+                
+                // Pada mobile, kita butuh User Interaction yang kuat untuk merekam stream
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const rec = new MediaRecorder(stream);
+                const chunks = [];
+                rec.ondataavailable = e => chunks.push(e.data);
+                rec.onstop = () => {
+                    selectedAudioBlob = new Blob(chunks, { type: 'audio/mp3' });
+                    setAudioReady("TTS Berhasil Disimpan");
+                    generateTTSBtn.innerText = "🎤 Generate & Simpan Suara";
+                    generateTTSBtn.disabled = false;
+                    stream.getTracks().forEach(t => t.stop());
+                };
+
+                utter.onstart = () => rec.start();
+                utter.onend = () => setTimeout(() => rec.stop(), 800);
+                window.speechSynthesis.speak(utter);
+            } catch (e) {
+                alert("Gagal generate. Pastikan izin mikrofon diberikan untuk merekam TTS.");
+                generateTTSBtn.disabled = false;
+            }
+        };
+
+        // INPUT MP3 DARI FILE
+        audioInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                selectedAudioBlob = file;
+                setAudioReady("File MP3 Terpilih");
+            }
+        };
+
+        function setAudioReady(msg) {
+            audioStatus.innerText = "✅ " + msg;
+            audioPreviewArea.style.display = "block";
+            audioPlayer.src = URL.createObjectURL(selectedAudioBlob);
+            checkReady();
+        }
+
+        // --- PRODUKSI ---
+        videoInput.onchange = (e) => { if(e.target.files[0]) { selectedVideoBlob = e.target.files[0]; loadPreview(URL.createObjectURL(selectedVideoBlob)); } };
+        function loadPreview(url) { previewVideo.src = url; previewArea.style.display = 'block'; checkReady(); }
+        document.getElementById('deleteVideoBtn').onclick = () => { selectedVideoBlob = null; previewArea.style.display = 'none'; checkReady(); };
+
+        function checkReady() {
+            const isReady = (selectedVideoBlob && selectedAudioBlob);
+            processBtn.disabled = !isReady;
+            if(isReady) infoStatus.innerText = "✨ Siap Produksi!";
+        }
+
+        processBtn.onclick = async () => {
+            infoStatus.innerText = "🔄 Menggabungkan Video + Audio...";
+            processBtn.disabled = true;
+
+            const v = document.createElement('video');
+            v.src = URL.createObjectURL(selectedVideoBlob);
+            v.muted = true;
+            await v.play();
+
+            const a = new Audio(URL.createObjectURL(selectedAudioBlob));
+            canvas.width = v.videoWidth; canvas.height = v.videoHeight;
+            const vStream = canvas.captureStream(25);
+            
+            const aCtx = new AudioContext();
+            const dest = aCtx.createMediaStreamDestination();
+            const source = aCtx.createMediaElementSource(a);
+            source.connect(dest);
+
+            const combined = new MediaStream([...vStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+            let mime = 'video/mp4;codecs=avc1';
+            if(!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+
+            const recorder = new MediaRecorder(combined, { mimeType: mime, videoBitsPerSecond: 2500000 });
+            const finalChunks = [];
+            recorder.ondataavailable = e => finalChunks.push(e.data);
+            recorder.onstop = () => {
+                outputVideo.src = URL.createObjectURL(new Blob(finalChunks, { type: mime }));
+                downloadLink.href = outputVideo.src;
+                downloadLink.download = "video_final.mp4";
+                outputArea.style.display = 'block';
+                infoStatus.innerText = "✅ Produksi Berhasil!";
+                processBtn.disabled = false;
+                outputArea.scrollIntoView({ behavior: 'smooth' });
+            };
+
+            recorder.start();
+            a.play();
+
+            const draw = () => {
+                if(v.ended || v.paused) { recorder.stop(); return; }
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                const ot = document.getElementById('overlayText').value;
+                if(ot) {
+                    ctx.fillStyle = "white"; ctx.font = `bold ${canvas.height * 0.07}px sans-serif`;
+                    ctx.textAlign = "center"; ctx.shadowColor = "black"; ctx.shadowBlur = 8;
+                    let y = 60; if(textPos==='middle') y=canvas.height/2; if(textPos==='bottom') y=canvas.height-60;
+                    ctx.fillText(ot, canvas.width/2, y);
+                }
+                requestAnimationFrame(draw);
+            };
+            draw();
+        };
+
+        // --- UI HELPERS ---
+        function switchVideoTab(t) {
+            document.getElementById('fileArea').style.display = t==='file'?'block':'none';
+            document.getElementById('cameraArea').style.display = t==='camera'?'block':'none';
+            document.getElementById('tabFile').className = t==='file'?'active':'';
+            document.getElementById('tabCamera').className = t==='camera'?'active':'';
+        }
+        function switchAudioTab(t) {
+            document.getElementById('ttsArea').style.display = t==='tts'?'block':'none';
+            document.getElementById('mp3Area').style.display = t==='mp3'?'block':'none';
+            document.getElementById('tabTTS').className = t==='tts'?'active':'';
+            document.getElementById('tabMP3').className = t==='mp3'?'active':'';
+        }
+        document.getElementById('posTop').onclick = () => { textPos='top'; setPosUI('posTop'); };
+        document.getElementById('posMid').onclick = () => { textPos='middle'; setPosUI('posMid'); };
+        document.getElementById('posBottom').onclick = () => { textPos='bottom'; setPosUI('posBottom'); };
+        function setPosUI(id) { ['posTop','posMid','posBottom'].forEach(i=>document.getElementById(i).classList.remove('active')); document.getElementById(id).classList.add('active'); }
+        document.getElementById('editBtn').onclick = () => { outputArea.style.display='none'; infoStatus.innerText="Ubah data lalu produksi lagi."; };
+    })();
+</script>
+</body>
+</html>
