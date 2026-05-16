@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Video Editor Pro - High Volume TTS</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: system-ui, sans-serif; background: #0a0f1e; color: white; display: flex; justify-content: center; padding: 16px; margin: 0; }
+        .container { background: #1a1f2e; padding: 20px; border-radius: 28px; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #00e5ff; margin: 0; }
+        .sub { text-align: center; font-size: 12px; color: #88aaff; margin-bottom: 20px; }
+        .label { font-weight: 600; margin: 12px 0 5px; font-size: 14px; color: #b9e6ff; }
+        textarea, input[type="file"] { width: 100%; border-radius: 16px; padding: 12px; background: #10131f; border: 1px solid #333; color: white; margin-bottom: 10px; }
+        button { width: 100%; padding: 14px; background: #00e5ff; border: none; border-radius: 50px; font-weight: bold; font-size: 16px; color: #000; margin-top: 10px; cursor: pointer; }
+        button:disabled { background: #444; color: #888; }
+        .status { background: #0e1120; border-radius: 20px; padding: 12px; text-align: center; font-size: 13px; margin: 15px 0; border-left: 4px solid #00e5ff; }
+        .download-link { display: block; background: #22c55e; color: white; text-align: center; padding: 15px; border-radius: 50px; text-decoration: none; font-weight: bold; margin: 10px 0; }
+        .preview-box { background: #000; border-radius: 16px; padding: 10px; margin-top: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎬 Video Editor Pro</h2>
+    <div class="sub">Perbaikan Volume TTS & Stabilizer File</div>
+
+    <div class="label">🗣️ 1. Buat Suara (Auto Amplify Volume)</div>
+    <textarea id="ttsText" rows="2" placeholder="Ketik teks di sini..."></textarea>
+    <button id="generateTTSBtn">🎤 GENERATE & PERKERAS SUARA</button>
+    
+    <div id="ttsStatus" class="status">Siap membuat suara.</div>
+
+    <div id="downloadArea" style="display:none;">
+        <div class="label">🎧 Cek Hasil Rekaman:</div>
+        <audio id="audioPreview" controls style="width:100%; margin-bottom:10px;"></audio>
+        <a id="ttsDownloadBtn" class="download-link">💾 SIMPAN KE HP (WAV)</a>
+    </div>
+
+    <hr style="border: 0.5px solid #333; margin: 25px 0;">
+
+    <div class="label">📹 2. Masukkan Video</div>
+    <input type="file" id="videoInput" accept="video/*">
+
+    <div class="label">🎵 3. Upload File Suara (Dari Step 1)</div>
+    <input type="file" id="audioInput" accept="audio/*">
+
+    <div class="label">✏️ Teks Overlay</div>
+    <textarea id="overlayText" placeholder="Teks di video..."></textarea>
+
+    <button id="processBtn" style="background:#ffaa33; margin-top:10px;" disabled>✨ GABUNGKAN VIDEO ✨</button>
+    
+    <div id="finalOutput" style="display:none; margin-top:20px;">
+        <video id="outputVideo" controls style="width:100%; border-radius:15px;"></video>
+        <a id="finalDownload" class="download-link" style="background:#22c55e;">💾 DOWNLOAD VIDEO FINAL</a>
+    </div>
+</div>
+
+<canvas id="mainCanvas" style="display:none;"></canvas>
+
+<script>
+    (function() {
+        const ttsText = document.getElementById('ttsText');
+        const generateTTSBtn = document.getElementById('generateTTSBtn');
+        const ttsStatus = document.getElementById('ttsStatus');
+        const audioPreview = document.getElementById('audioPreview');
+        const ttsDownloadBtn = document.getElementById('ttsDownloadBtn');
+        const downloadArea = document.getElementById('downloadArea');
+        
+        const videoInput = document.getElementById('videoInput');
+        const audioInput = document.getElementById('audioInput');
+        const processBtn = document.getElementById('processBtn');
+
+        let selectedVideo = null;
+        let selectedAudio = null;
+
+        // --- SOLUSI VOLUME PELAN: Audio Context Amplification ---
+        generateTTSBtn.onclick = async () => {
+            const txt = ttsText.value.trim();
+            if(!txt) return;
+
+            generateTTSBtn.disabled = true;
+            ttsStatus.innerText = "⏳ Merekam & Memperkeras Suara...";
+            window.speechSynthesis.cancel();
+
+            try {
+                // Gunakan AudioContext untuk menaikkan Gain (Volume)
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioCtx.createMediaStreamSource(stream);
+                const gainNode = audioCtx.createGain();
+                
+                // Naikkan volume 3x lipat dari aslinya
+                gainNode.gain.value = 3.0; 
+                
+                const dest = audioCtx.createMediaStreamDestination();
+                source.connect(gainNode);
+                gainNode.connect(dest);
+
+                const mediaRecorder = new MediaRecorder(dest.stream);
+                const chunks = [];
+
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    audioPreview.src = url;
+                    ttsDownloadBtn.href = url;
+                    ttsDownloadBtn.download = `suara_keras_${Date.now()}.wav`;
+                    
+                    downloadArea.style.display = 'block';
+                    ttsStatus.innerText = "✅ Selesai! Cek suara di atas & simpan.";
+                    generateTTSBtn.disabled = false;
+                    stream.getTracks().forEach(t => t.stop());
+                    audioCtx.close();
+                };
+
+                const utter = new SpeechSynthesisUtterance(txt);
+                utter.lang = 'id-ID';
+                
+                utter.onstart = () => mediaRecorder.start();
+                utter.onend = () => {
+                    // Beri jeda sedikit agar tidak terpotong
+                    setTimeout(() => mediaRecorder.stop(), 800);
+                };
+
+                window.speechSynthesis.speak(utter);
+            } catch (err) {
+                alert("Izin mic diperlukan!");
+                generateTTSBtn.disabled = false;
+            }
+        };
+
+        // --- HANDLING FILES ---
+        videoInput.onchange = (e) => { selectedVideo = e.target.files[0]; checkReady(); };
+        audioInput.onchange = (e) => { selectedAudio = e.target.files[0]; checkReady(); };
+        function checkReady() { processBtn.disabled = !(selectedVideo && selectedAudio); }
+
+        // --- PROCESS VIDEO ---
+        processBtn.onclick = async () => {
+            processBtn.disabled = true;
+            processBtn.innerText = "🔄 Menggabungkan...";
+            
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const v = document.createElement('video');
+            v.src = URL.createObjectURL(selectedVideo);
+            v.muted = true;
+            await v.play();
+
+            const a = new Audio(URL.createObjectURL(selectedAudio));
+            canvas.width = v.videoWidth; 
+            canvas.height = v.videoHeight;
+
+            const vStream = canvas.captureStream(30);
+            const aCtx = new AudioContext();
+            const aDest = aCtx.createMediaStreamDestination();
+            const aSource = aCtx.createMediaElementSource(a);
+            
+            // Tambahkan Gain lagi saat penggabungan video agar suara mantap
+            const finalGain = aCtx.createGain();
+            finalGain.gain.value = 2.0; 
+            aSource.connect(finalGain);
+            finalGain.connect(aDest);
+
+            const combined = new MediaStream([...vStream.getVideoTracks(), ...aDest.stream.getAudioTracks()]);
+            const recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
+            const finalChunks = [];
+
+            recorder.ondataavailable = e => finalChunks.push(e.data);
+            recorder.onstop = () => {
+                const finalBlob = new Blob(finalChunks, { type: 'video/mp4' });
+                const url = URL.createObjectURL(finalBlob);
+                document.getElementById('outputVideo').src = url;
+                document.getElementById('finalDownload').href = url;
+                document.getElementById('finalDownload').download = "hasil_final.mp4";
+                document.getElementById('finalOutput').style.display = 'block';
+                processBtn.innerText = "✅ Berhasil!";
+            };
+
+            recorder.start();
+            a.play();
+
+            const draw = () => {
+                if(v.ended || v.paused) { recorder.stop(); return; }
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                const txt = document.getElementById('overlayText').value;
+                if(txt) {
+                    ctx.fillStyle = "white";
+                    ctx.font = `bold ${canvas.height * 0.07}px sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "black"; ctx.shadowBlur = 10;
+                    ctx.fillText(txt, canvas.width/2, canvas.height * 0.85);
+                }
+                requestAnimationFrame(draw);
+            };
+            draw();
+        };
+    })();
+</script>
+</body>
+</html>
