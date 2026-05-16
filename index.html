@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Video Editor Pro - TTS Downloader Fixed</title>
+    <style>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: system-ui, 'Segoe UI', sans-serif; background: #0a0f1e; color: white; display: flex; justify-content: center; padding: 16px; margin: 0; }
+        .container { background: #1a1f2e; padding: 20px; border-radius: 28px; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { text-align: center; color: #00e5ff; margin: 0 0 5px; }
+        .sub { text-align: center; font-size: 12px; color: #88aaff; margin-bottom: 20px; }
+        .label { font-weight: 600; margin: 12px 0 5px; font-size: 14px; color: #b9e6ff; }
+        input[type="file"], textarea { width: 100%; border-radius: 16px; padding: 12px; background: #10131f; border: 1px solid #333; color: white; margin-bottom: 10px; }
+        button { width: 100%; padding: 14px; background: #00e5ff; border: none; border-radius: 50px; font-weight: bold; font-size: 16px; color: #000; margin-top: 10px; cursor: pointer; }
+        button:disabled { background: #444; color: #888; }
+        .status { background: #0e1120; border-radius: 20px; padding: 12px; text-align: center; font-size: 13px; margin: 15px 0; border-left: 4px solid #00e5ff; }
+        .success-box { background: #064e3b; color: #4ade80; border-left: 4px solid #22c55e; border-radius: 15px; padding: 10px; margin: 10px 0; display: none; }
+        .download-link { display: block; background: #22c55e; color: white; text-align: center; padding: 12px; border-radius: 50px; text-decoration: none; font-weight: bold; margin: 10px 0; }
+        video { width: 100%; border-radius: 16px; background: #000; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🎬 Video Editor Pro</h2>
+    <div class="sub">Step 1: Download TTS • Step 2: Upload ke Video</div>
+
+    <div class="label">📹 1. Pilih Video</div>
+    <input type="file" id="videoInput" accept="video/*">
+    <div id="videoPreviewArea" style="display:none;">
+        <video id="previewVideo" muted playsinline></video>
+    </div>
+
+    <hr style="border: 0.5px solid #333; margin: 20px 0;">
+
+    <div class="label">🗣️ 2. Buat Suara TTS (Download Dulu)</div>
+    <textarea id="ttsText" rows="2" placeholder="Ketik kata-kata di sini..."></textarea>
+    <button id="generateTTSBtn">🎤 GENERATE & DOWNLOAD MP3</button>
+    
+    <div id="ttsSuccessBox" class="success-box">
+        ✅ <b>Suara Berhasil Dibuat!</b><br>
+        Silakan klik tombol hijau di bawah untuk simpan ke HP, lalu upload di bagian nomor 3.
+        <a id="ttsDownloadBtn" class="download-link">💾 DOWNLOAD SUARA .WAV</a>
+    </div>
+
+    <hr style="border: 0.5px solid #333; margin: 20px 0;">
+
+    <div class="label">🎵 3. Upload File Suara (Hasil Download tadi)</div>
+    <input type="file" id="audioInput" accept="audio/*">
+    <div id="audioStatus" class="status">Menunggu file suara...</div>
+
+    <div class="label">✏️ Teks Layar</div>
+    <textarea id="overlayText" placeholder="Teks yang muncul di video..."></textarea>
+    
+    <button id="processBtn" style="background:#ffaa33; margin-top:20px;" disabled>✨ PRODUKSI VIDEO FINAL ✨</button>
+    
+    <div id="finalOutput" style="display:none; margin-top:20px;">
+        <video id="outputVideo" controls></video>
+        <a id="finalDownload" class="download-link" style="background:#22c55e;">💾 SIMPAN VIDEO KE GALERI</a>
+    </div>
+</div>
+
+<canvas id="mainCanvas" style="display:none;"></canvas>
+
+<script>
+    (function() {
+        const videoInput = document.getElementById('videoInput');
+        const audioInput = document.getElementById('audioInput');
+        const ttsText = document.getElementById('ttsText');
+        const generateTTSBtn = document.getElementById('generateTTSBtn');
+        const ttsSuccessBox = document.getElementById('ttsSuccessBox');
+        const ttsDownloadBtn = document.getElementById('ttsDownloadBtn');
+        const audioStatus = document.getElementById('audioStatus');
+        const processBtn = document.getElementById('processBtn');
+        const previewVideo = document.getElementById('previewVideo');
+        
+        let selectedVideo = null;
+        let selectedAudio = null;
+
+        // --- 1. HANDLING VIDEO ---
+        videoInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                selectedVideo = file;
+                previewVideo.src = URL.createObjectURL(file);
+                document.getElementById('videoPreviewArea').style.display = 'block';
+                checkReady();
+            }
+        };
+
+        // --- 2. FIXED TTS GENERATOR & DOWNLOADER ---
+        generateTTSBtn.onclick = async () => {
+            const text = ttsText.value.trim();
+            if(!text) { alert("Masukkan teks!"); return; }
+
+            generateTTSBtn.disabled = true;
+            generateTTSBtn.innerText = "⏳ Merekam Suara...";
+
+            try {
+                // Gunakan rekaman microphone untuk menangkap output TTS
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(stream);
+                const chunks = [];
+
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    // Aktifkan tombol download
+                    ttsDownloadBtn.href = url;
+                    ttsDownloadBtn.download = `suara_tts_${Date.now()}.wav`;
+                    ttsSuccessBox.style.display = 'block';
+                    
+                    generateTTSBtn.disabled = false;
+                    generateTTSBtn.innerText = "🎤 GENERATE & DOWNLOAD LAGU";
+                    stream.getTracks().forEach(t => t.stop());
+                };
+
+                const utter = new SpeechSynthesisUtterance(text);
+                utter.lang = 'id-ID';
+                utter.rate = 1.0;
+
+                utter.onstart = () => mediaRecorder.start();
+                utter.onend = () => {
+                    setTimeout(() => mediaRecorder.stop(), 500);
+                };
+
+                window.speechSynthesis.speak(utter);
+            } catch (err) {
+                alert("Izin mic diperlukan untuk mendownload TTS");
+                generateTTSBtn.disabled = false;
+            }
+        };
+
+        // --- 3. HANDLING AUDIO UPLOAD ---
+        audioInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if(file) {
+                selectedAudio = file;
+                audioStatus.innerText = "✅ File Suara Siap: " + file.name;
+                audioStatus.style.background = "#1a3a3a";
+                checkReady();
+            }
+        };
+
+        function checkReady() {
+            processBtn.disabled = !(selectedVideo && selectedAudio);
+        }
+
+        // --- 4. PRODUKSI FINAL ---
+        processBtn.onclick = async () => {
+            processBtn.disabled = true;
+            processBtn.innerText = "🔄 Memproses Video...";
+            
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            const v = document.createElement('video');
+            v.src = URL.createObjectURL(selectedVideo);
+            v.muted = true;
+            await v.play();
+
+            const a = new Audio(URL.createObjectURL(selectedAudio));
+            canvas.width = v.videoWidth; 
+            canvas.height = v.videoHeight;
+
+            const vStream = canvas.captureStream(30);
+            const aCtx = new AudioContext();
+            const dest = aCtx.createMediaStreamDestination();
+            const source = aCtx.createMediaElementSource(a);
+            source.connect(dest);
+
+            const combined = new MediaStream([...vStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+            const recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
+            const finalChunks = [];
+
+            recorder.ondataavailable = e => finalChunks.push(e.data);
+            recorder.onstop = () => {
+                const finalBlob = new Blob(finalChunks, { type: 'video/mp4' });
+                const finalUrl = URL.createObjectURL(finalBlob);
+                document.getElementById('outputVideo').src = finalUrl;
+                document.getElementById('finalDownload').href = finalUrl;
+                document.getElementById('finalDownload').download = "video_tts_final.mp4";
+                document.getElementById('finalOutput').style.display = 'block';
+                processBtn.innerText = "✨ PRODUKSI SELESAI!";
+            };
+
+            recorder.start();
+            a.play();
+
+            const draw = () => {
+                if(v.ended || v.paused) { recorder.stop(); return; }
+                ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                
+                const txt = document.getElementById('overlayText').value;
+                if(txt) {
+                    ctx.fillStyle = "white";
+                    ctx.font = `bold ${canvas.height * 0.08}px sans-serif`;
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "black";
+                    ctx.shadowBlur = 10;
+                    ctx.fillText(txt, canvas.width/2, canvas.height * 0.2);
+                }
+                requestAnimationFrame(draw);
+            };
+            draw();
+        };
+    })();
+</script>
+</body>
+</html>
